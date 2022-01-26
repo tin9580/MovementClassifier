@@ -1,15 +1,15 @@
 #%%
-from calendar import c
 import glob
-from operator import index
 import os
+from lightgbm import plot_tree
 import pandas as pd
+import numpy as np
 os.chdir('/home/tin/CUAS/Intro ML/Project/data')
 file_extension = '.csv'
 
 #files names in each folder
-walk_files = [i for i in glob.glob(f"walk/*{file_extension}")]
-dance_files = [i for i in glob.glob(f"dance/*{file_extension}")]
+salsa_files = [i for i in glob.glob(f"salsa/*{file_extension}")]
+techno_files = [i for i in glob.glob(f"techno/*{file_extension}")]
 #%%
 def append_files(files):
     """Function to append multiple files. It returns the files with a column indicating each batch."""
@@ -22,37 +22,100 @@ def append_files(files):
     return(df_out)
 # %%
 #joining files
-df_walk = append_files(walk_files)
-df_dance = append_files(dance_files)
+df_salsa = append_files(salsa_files)
+df_techno = append_files(techno_files)
+#dance style 3 and 4 missing....
+
+
 # %%
-df_walk.plot('time','ax')
-df_dance.plot('time','ax')
+df_techno.plot('time','ax', kind='scatter')
+df_salsa.plot('time','gFx', kind='scatter')
+
 
 #%%
-def number_of_peaks(df):
+def number_of_peaks(x):
     """return the number of peaks of a signal"""
     from scipy.signal import find_peaks
-    peaks,_ = find_peaks(df)
+    peaks,_ = find_peaks(x)
     return len(peaks)
+
+#%%
+def max_min(x):
+    """Computes the difference between max and min values"""
+    return(np.max(x)-np.min(x))
+
+def sum_abs(x):
+    """Computes sum of absolute values"""
+    return(sum(abs(x)))
 # %%
 def create_features(df):
     """for each batch(i.e window of time), we can calculate multiple features, like std, max, min,..."""
-    import numpy as np
-    df1=df.groupby('batch').agg([np.std, np.max, np.min, np.mean,number_of_peaks])
+    df1=df.groupby('batch').agg([np.std, np.max, np.min, np.mean,number_of_peaks,max_min, sum_abs])
     #we need to combine the columnames
     df1.columns = df1.columns.map(''.join)
     return(df1.reset_index())
 
 # %%
-df_walk_features = create_features(df_walk.drop('time',axis=1))
-df_walk_features['label']='walk'
-df_dance_features = create_features(df_dance.drop('time',axis=1))
-df_dance_features['label']='dance'
+#feature creation
+df_salsa_features = create_features(df_salsa.drop('time',axis=1))
+df_salsa_features['label']='salsa'
+
+df_techno_features = create_features(df_techno.drop('time',axis=1))
+df_techno_features['label']='techno'
 
 # %%
 #Now we combine everything in a dataset
-df = df_walk_features.append(df_dance_features,ignore_index=True)
+df = df_salsa_features.append(df_techno_features,ignore_index=True)
 df=df.drop('batch',axis=1)
 df
 # %%
-#........ supervised cluster learning......
+#preprocessing
+df.isna().sum().sum()
+#...... outliers......... maybe we can do more here....
+# %%
+#from https://www.kaggle.com/raviprakash438/wrapper-method-feature-selection
+#we can delete this if it is not interesting...
+def correlation(dataset,threshold):
+    #funcion that tells the corralated columns of a dataset, given a threshold
+
+    col_corr=set() # set will contains unique values.
+    corr_matrix=dataset.corr() #finding the correlation between columns.
+    for i in range(len(corr_matrix.columns)): #number of columns
+        for j in range(i):
+            if abs(corr_matrix.iloc[i,j])>threshold: #checking the correlation between columns.
+                colName=corr_matrix.columns[i] #getting the column name
+                col_corr.add(colName) #adding the correlated column name heigher than threshold value.
+    return col_corr #returning set of column names
+#%%
+col=correlation(df.drop('label',axis=1),0.85)
+print('Correlated columns:',col)
+# %%
+#seting training and testing sets
+x=df.drop('label',axis=1)
+y=df[['label']]
+
+from sklearn.model_selection import train_test_split
+
+X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.33, random_state=42)
+
+#%%
+#Feature Selection using wraper method
+from mlxtend.feature_selection import SequentialFeatureSelector as sfs
+from sklearn.tree import DecisionTreeClassifier #we could change the classifier, just as an example
+model=sfs(DecisionTreeClassifier(),forward=True,verbose=2,cv=2,n_jobs=-1,scoring='accuracy',k_features= len(x.columns))
+model.fit(X_train,y_train)
+# %%
+#changing k_Features using the result from above... I got that using only one feature we have a good accuracy, but when we use more data this must change
+model=sfs(DecisionTreeClassifier(),forward=True,verbose=2,cv=2,n_jobs=-1,scoring='accuracy',k_features= 1)
+model.fit(X_train,y_train)
+#Get the column name for the selected feature.
+x.columns[list(model.k_feature_idx_)]
+
+
+# %%
+#accuracy using testing data
+from sklearn.metrics import accuracy_score
+dt=DecisionTreeClassifier().fit(X_train[['gFxamin']],y_train)
+y_predict = dt.predict(X_test[['gFxamin']])
+print(accuracy_score(y_test,y_predict))
+# %%
