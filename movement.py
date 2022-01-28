@@ -1,6 +1,7 @@
 #%%
 import glob
 import os
+from turtle import down
 from lightgbm import plot_tree
 import pandas as pd
 import numpy as np
@@ -9,13 +10,15 @@ file_extension = '.csv'
 
 #files names in each folder
 salsa_files = [i for i in glob.glob(f"salsa/*{file_extension}")]
-techno_files = [i for i in glob.glob(f"techno/*{file_extension}")]
+samba_files = [i for i in glob.glob(f"samba/*{file_extension}")]
+walk_files = [i for i in glob.glob(f"walk/*{file_extension}")]
+downstairs_files = [i for i in glob.glob(f"downstairs/*{file_extension}")]
 #%%
 def append_files(files):
     """Function to append multiple files. It returns the files with a column indicating each batch."""
     df_out=pd.DataFrame()
     for i,file in enumerate(files):
-        df = pd.read_csv(file,header=0)
+        df = pd.read_csv(file,header=0, skiprows=range(1, 100), skipfooter=100)##first and last rows, usually noise
         df=df.dropna(axis=1)
         df['batch']=i
         df_out=df_out.append(df,ignore_index = True)
@@ -23,12 +26,13 @@ def append_files(files):
 # %%
 #joining files
 df_salsa = append_files(salsa_files)
-df_techno = append_files(techno_files)
-#dance style 3 and 4 missing....
+df_samba = append_files(samba_files)
+df_walk = append_files(walk_files)
+df_downstairs = append_files(downstairs_files)
 
 
 # %%
-df_techno.plot('time','ax', kind='scatter')
+df_samba.plot('time','ax', kind='scatter')
 df_salsa.plot('time','gFx', kind='scatter')
 
 
@@ -60,18 +64,26 @@ def create_features(df):
 df_salsa_features = create_features(df_salsa.drop('time',axis=1))
 df_salsa_features['label']='salsa'
 
-df_techno_features = create_features(df_techno.drop('time',axis=1))
-df_techno_features['label']='techno'
+df_samba_features = create_features(df_samba.drop('time',axis=1))
+df_samba_features['label']='samba'
 
+df_walk_features = create_features(df_walk.drop('time',axis=1))
+df_walk_features['label']='walk'
+
+df_downstairs_features = create_features(df_downstairs.drop('time',axis=1))
+df_downstairs_features['label']='downstairs'
 # %%
 #Now we combine everything in a dataset
-df = df_salsa_features.append(df_techno_features,ignore_index=True)
+df = df_salsa_features.append(df_samba_features,ignore_index=True)
+df = df.append(df_walk_features, ignore_index=True)
+df = df.append(df_downstairs_features, ignore_index=True)
 df=df.drop('batch',axis=1)
 df
 # %%
 #preprocessing
 df.isna().sum().sum()
 #...... outliers......... maybe we can do more here....
+#we can also do some plots....
 # %%
 #from https://www.kaggle.com/raviprakash438/wrapper-method-feature-selection
 #we can delete this if it is not interesting...
