@@ -11,13 +11,14 @@ file_extension = '.csv'
 #files names in each folder
 salsa_files = [i for i in glob.glob(f"salsa/*{file_extension}")]
 samba_files = [i for i in glob.glob(f"samba/*{file_extension}")]
-walk_files = [i for i in glob.glob(f"walk/*{file_extension}")]
+walk_files = [i for i in glob.glob(f"walking/*{file_extension}")]
 downstairs_files = [i for i in glob.glob(f"downstairs/*{file_extension}")]
 #%%
 def append_files(files):
     """Function to append multiple files. It returns the files with a column indicating each batch."""
     df_out=pd.DataFrame()
     for i,file in enumerate(files):
+        print(file)
         df = pd.read_csv(file,header=0, skiprows=range(1, 100), skipfooter=100)##first and last rows, usually noise
         df=df.dropna(axis=1)
         df['batch']=i
@@ -30,10 +31,6 @@ df_samba = append_files(samba_files)
 df_walk = append_files(walk_files)
 df_downstairs = append_files(downstairs_files)
 
-
-# %%
-df_samba.plot('time','ax', kind='scatter')
-df_salsa.plot('time','gFx', kind='scatter')
 
 
 #%%
@@ -80,31 +77,55 @@ df = df.append(df_downstairs_features, ignore_index=True)
 df=df.drop('batch',axis=1)
 df
 # %%
-#preprocessing
-df.isna().sum().sum()
-#...... outliers......... maybe we can do more here....
-#we can also do some plots....
-# %%
-#from https://www.kaggle.com/raviprakash438/wrapper-method-feature-selection
-#we can delete this if it is not interesting...
-def correlation(dataset,threshold):
-    #funcion that tells the corralated columns of a dataset, given a threshold
-
-    col_corr=set() # set will contains unique values.
-    corr_matrix=dataset.corr() #finding the correlation between columns.
-    for i in range(len(corr_matrix.columns)): #number of columns
-        for j in range(i):
-            if abs(corr_matrix.iloc[i,j])>threshold: #checking the correlation between columns.
-                colName=corr_matrix.columns[i] #getting the column name
-                col_corr.add(colName) #adding the correlated column name heigher than threshold value.
-    return col_corr #returning set of column names
+#preprocessing 
+print("The dataset has {} observations and {} variables with {} missing values".format(df.shape[0], df.shape[1], df.isna().sum().sum()) )
 #%%
-col=correlation(df.drop('label',axis=1),0.85)
-print('Correlated columns:',col)
+import seaborn as sns
+import matplotlib.pyplot as plt
+#%%
+fig, axes = plt.subplots(3, 3, figsize=(20,10))
+
+sns.kdeplot(data = df, x='gFxstd', hue='label', ax=axes[0,0])
+sns.kdeplot(data = df, x='gFystd', hue='label', ax=axes[0,1])
+sns.kdeplot(data = df, x='gFzstd', hue='label', ax=axes[0,2])
+sns.kdeplot(data = df, x='axstd', hue='label', ax=axes[1,0])
+sns.kdeplot(data = df, x='aystd', hue='label', ax=axes[1,1])
+sns.kdeplot(data = df, x='azstd', hue='label', ax=axes[1,2])
+sns.kdeplot(data = df, x='axmax_min', hue='label', ax=axes[2,0])
+sns.kdeplot(data = df, x='aymax_min', hue='label', ax=axes[2,1])
+sns.kdeplot(data = df, x='azmax_min', hue='label', ax=axes[2,2])
+plt.show()
+# %%
+def correlation(dataset,target, threshold):
+    """returns the features of a data set that has a correlation higher than the threshold with a target feature."""
+    all_correlation = dataset.corr()
+    pos_correlation = all_correlation[all_correlation[target]>threshold]
+    neg_correlation = all_correlation[all_correlation[target]<-threshold]
+    greatest_correlation = pd.concat([pos_correlation, neg_correlation])
+    features = list(greatest_correlation.drop(target).index)
+    return features   
+
+#%%
+from sklearn.preprocessing import LabelEncoder
+
+label = df['label']
+label = np.array(label)
+label_encoded = LabelEncoder().fit_transform(label)
+df_encoded = df.copy()
+df_encoded['label']=label_encoded
+#%%
+features_selected = correlation(df_encoded, "label", 0.4)
+features_selected
+#%%
+plt.style.use('ggplot')
+corr = df_encoded[features_selected].corr()
+ax = plt.subplots(figsize=(15, 7))
+sns.heatmap(corr,  annot=True, annot_kws={"size": 15}) 
+
 # %%
 #seting training and testing sets
-x=df.drop('label',axis=1)
-y=df[['label']]
+x=df_encoded.drop('label',axis=1)
+y=df_encoded[['label']]
 
 from sklearn.model_selection import train_test_split
 
@@ -116,18 +137,27 @@ from mlxtend.feature_selection import SequentialFeatureSelector as sfs
 from sklearn.tree import DecisionTreeClassifier #we could change the classifier, just as an example
 model=sfs(DecisionTreeClassifier(),forward=True,verbose=2,cv=2,n_jobs=-1,scoring='accuracy',k_features= len(x.columns))
 model.fit(X_train,y_train)
-# %%
-#changing k_Features using the result from above... I got that using only one feature we have a good accuracy, but when we use more data this must change
-model=sfs(DecisionTreeClassifier(),forward=True,verbose=2,cv=2,n_jobs=-1,scoring='accuracy',k_features= 1)
-model.fit(X_train,y_train)
-#Get the column name for the selected feature.
-x.columns[list(model.k_feature_idx_)]
 
+#plot the scores
+from mlxtend.plotting import plot_sequential_feature_selection as plot_sfs
+import matplotlib.pyplot as plt
+fig1 = plot_sfs(model.get_metric_dict(), kind='std_dev',figsize=(20,5))
 
+plt.ylim([0.7, 1])
+plt.title('Sequential Forward Selection (w. StdDev)')
+plt.grid()
+plt.show()
+#In this case lets take only 4 features
+#%%
+#Wraper output as a table
+subsets_wraper = pd.DataFrame(model.subsets_).transpose()
+#the feature names with 4 features...
+best_features = list(subsets_wraper.iloc[3]['feature_names'])
+best_features
 # %%
 #accuracy using testing data
 from sklearn.metrics import accuracy_score
-dt=DecisionTreeClassifier().fit(X_train[['gFxamin']],y_train)
-y_predict = dt.predict(X_test[['gFxamin']])
+dt=DecisionTreeClassifier().fit(X_train[best_features],y_train)
+y_predict = dt.predict(X_test[best_features])
 print(accuracy_score(y_test,y_predict))
-# %%
+
