@@ -165,19 +165,19 @@ print(accuracy_score(y_test,y_predict))
 
 # Logistic Regression
 from sklearn.linear_model import LogisticRegression
-log_regr = LogisticRegression().fit(X_train, y_train)
+log_regr = LogisticRegression().fit(X_train[best_features], y_train)
 
 # Linear Determinant Analysis
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
-lda = LDA().fit(X_train, y_train)
+lda = LDA().fit(X_train[best_features], y_train)
 
 # Regression Tree
 from sklearn.tree import DecisionTreeClassifier
-regr_tree = DecisionTreeClassifier().fit(X_train,y_train)
+regr_tree = DecisionTreeClassifier().fit(X_train[best_features],y_train)
 
 # Random Forest
 from sklearn.ensemble import RandomForestClassifier
-random_forest = RandomForestClassifier(max_depth=2, random_state=0).fit(X_train, y_train)
+random_forest = RandomForestClassifier(max_depth=2, random_state=0).fit(X_train[best_features], y_train)
 
 # KNN
 from sklearn.neighbors import KNeighborsClassifier
@@ -187,14 +187,14 @@ accuracies = []
 for k in kVals:
     #training the KNN model with each value of k
     KNN_testing = KNeighborsClassifier(n_neighbors = k)
-    KNN_testing.fit(X_train, y_train)
+    KNN_testing.fit(X_train[best_features], y_train)
     #evaluating the model and updating the list of accuracies
-    score = KNN_testing.score(X_test, y_test)
+    score = KNN_testing.score(X_test[best_features], y_test)
     #print("k = %d, accuracy= %.2f%%" % (k, score * 100))
     accuracies.append(score)
 # obtaining the value of k with the highest accuracy
 i = np.argmax(accuracies)
-KNN = KNeighborsClassifier(n_neighbors = kVals[i]).fit(X_train, y_train)
+KNN = KNeighborsClassifier(n_neighbors = kVals[i]).fit(X_train[best_features], y_train)
 
 print("k = %d achieved the highest accuracy of %.2f%%"%(kVals[i], accuracies[i]*100))
 
@@ -205,7 +205,7 @@ from sklearn.model_selection import cross_val_predict
 from sklearn import metrics
 
 def evaluation(model):
-    predictions=cross_val_predict(model, X_test, y_test)
+    predictions=cross_val_predict(model, X_test[best_features], y_test)
     skplt.metrics.plot_confusion_matrix(y_test, predictions, normalize=True)
     plt.show()
     print("Acuracy on test data: %.3f%%" % (metrics.accuracy_score(y_test, predictions) * 100.0))
