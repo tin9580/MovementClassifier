@@ -18,7 +18,6 @@ def append_files(files):
     """Function to append multiple files. It returns the files with a column indicating each batch."""
     df_out=pd.DataFrame()
     for i,file in enumerate(files):
-        print(file)
         df = pd.read_csv(file,header=0, skiprows=range(1, 100), skipfooter=100)##first and last rows, usually noise
         df=df.dropna(axis=1)
         df['batch']=i
@@ -35,10 +34,10 @@ df_downstairs = append_files(downstairs_files)
 
 #%%
 def number_of_peaks(x):
-    """return the number of peaks of a signal"""
+    """return the mean number of peaks of a signal"""
     from scipy.signal import find_peaks
     peaks,_ = find_peaks(x)
-    return len(peaks)
+    return len(peaks)/len(x)
 
 #%%
 def max_min(x):
@@ -46,8 +45,8 @@ def max_min(x):
     return(np.max(x)-np.min(x))
 
 def sum_abs(x):
-    """Computes sum of absolute values"""
-    return(sum(abs(x)))
+    """Computes mean of absolute values"""
+    return(np.mean(abs(x)))
 # %%
 def create_features(df):
     """for each batch(i.e window of time), we can calculate multiple features, like std, max, min,..."""
@@ -151,8 +150,8 @@ plt.show()
 #%%
 #Wraper output as a table
 subsets_wraper = pd.DataFrame(model.subsets_).transpose()
-#the feature names with 4 features...
-best_features = list(subsets_wraper.iloc[3]['feature_names'])
+#the feature names with 13 features...
+best_features = list(subsets_wraper.iloc[12]['feature_names'])
 best_features
 # %%
 #accuracy using testing data
@@ -160,7 +159,7 @@ from sklearn.metrics import accuracy_score
 dt=DecisionTreeClassifier().fit(X_train[best_features],y_train)
 y_predict = dt.predict(X_test[best_features])
 print(accuracy_score(y_test,y_predict))
-
+#%%
 # # Modeling
 
 # Logistic Regression
@@ -203,15 +202,16 @@ print("k = %d achieved the highest accuracy of %.2f%%"%(kVals[i], accuracies[i]*
 import scikitplot as skplt
 from sklearn.model_selection import cross_val_predict
 from sklearn import metrics
-
+#%%
 def evaluation(model):
-    predictions=cross_val_predict(model, X_test[best_features], y_test)
-    skplt.metrics.plot_confusion_matrix(y_test, predictions, normalize=True)
+    predictions=cross_val_predict(model, X_test[best_features], y_test.values.ravel())
+    skplt.metrics.plot_confusion_matrix(y_true=y_test, y_pred=predictions, normalize=True, title=f'Confusion Matrix for {model}')
     plt.show()
     print("Acuracy on test data: %.3f%%" % (metrics.accuracy_score(y_test, predictions) * 100.0))
     
 evaluation(KNN)
-
+labelnames=df['label'].unique()
+print(f'0: {labelnames[0]}, 1: {labelnames[1]}, 2: {labelnames[2]}, 3: {labelnames[3]}, ')
 evaluation(log_regr)
 
 evaluation(lda)
@@ -220,3 +220,5 @@ evaluation(regr_tree)
 
 evaluation(random_forest)
 
+
+# %%
