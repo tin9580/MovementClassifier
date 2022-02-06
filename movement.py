@@ -1,5 +1,6 @@
 #%%
 import glob
+from msilib.schema import Error
 import os
 import pandas as pd
 import numpy as np
@@ -76,6 +77,8 @@ df
 # %%
 #preprocessing 
 print("The dataset has {} observations and {} variables with {} missing values".format(df.shape[0], df.shape[1], df.isna().sum().sum()) )
+if df.isna().sum().sum() !=0 :
+    raise ValueError('The dataframe has missing values')
 #%%
 import seaborn as sns
 import matplotlib.pyplot as plt
