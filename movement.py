@@ -1,8 +1,6 @@
 #%%
 import glob
 import os
-from turtle import down
-from lightgbm import plot_tree
 import pandas as pd
 import numpy as np
 os.chdir('/home/tin/CUAS/Intro ML/Project/data')
@@ -33,7 +31,7 @@ df_downstairs = append_files(downstairs_files)
 
 
 #%%
-def number_of_peaks(x):
+def mean_number_of_peaks(x):
     """return the mean number of peaks of a signal"""
     from scipy.signal import find_peaks
     peaks,_ = find_peaks(x)
@@ -50,7 +48,7 @@ def sum_abs(x):
 # %%
 def create_features(df):
     """for each batch(i.e window of time), we can calculate multiple features, like std, max, min,..."""
-    df1=df.groupby('batch').agg([np.std, np.max, np.min, np.mean,number_of_peaks,max_min, sum_abs])
+    df1=df.groupby('batch').agg([np.std, np.max, np.min, np.mean, mean_number_of_peaks, max_min, sum_abs])
     #we need to combine the columnames
     df1.columns = df1.columns.map(''.join)
     return(df1.reset_index())
@@ -113,7 +111,7 @@ label_encoded = LabelEncoder().fit_transform(label)
 df_encoded = df.copy()
 df_encoded['label']=label_encoded
 #%%
-features_selected = correlation(df_encoded, "label", 0.4)
+features_selected = correlation(df_encoded, "label", 0.2)
 features_selected
 #%%
 plt.style.use('ggplot')
@@ -131,94 +129,78 @@ from sklearn.model_selection import train_test_split
 X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.33, random_state=42)
 
 #%%
-#Feature Selection using wraper method
 from mlxtend.feature_selection import SequentialFeatureSelector as sfs
-from sklearn.tree import DecisionTreeClassifier #we could change the classifier, just as an example
-model=sfs(DecisionTreeClassifier(),forward=True,verbose=2,cv=2,n_jobs=-1,scoring='accuracy',k_features= len(x.columns))
-model.fit(X_train,y_train)
+def feature_selection(model, X_train, y_train, cv=2):
+    """Plots the accuracy vs the number of features selected for a given model"""
+    my_sfs=sfs(model,forward=True,verbose=0,cv=cv,n_jobs=-1,scoring='accuracy',k_features= len(X_train.columns))
+    my_sfs.fit(X_train,y_train)
 
-#plot the scores
-from mlxtend.plotting import plot_sequential_feature_selection as plot_sfs
-import matplotlib.pyplot as plt
-fig1 = plot_sfs(model.get_metric_dict(), kind='std_dev',figsize=(20,5))
+    #plot the scores
+    from mlxtend.plotting import plot_sequential_feature_selection as plot_sfs
+    import matplotlib.pyplot as plt
+    fig1 = plot_sfs(my_sfs.get_metric_dict(), kind='std_dev',figsize=(20,5))
 
-plt.ylim([0.7, 1])
-plt.title('Sequential Forward Selection (w. StdDev)')
-plt.grid()
-plt.show()
-#In this case lets take only 4 features
+    plt.ylim([0.5, 1])
+    plt.title(f'Sequential Forward Selection for {model}')
+    plt.grid()
+    plt.show()
+
+    return my_sfs
 #%%
-#Wraper output as a table
-subsets_wraper = pd.DataFrame(model.subsets_).transpose()
-#the feature names with 13 features...
-best_features = list(subsets_wraper.iloc[12]['feature_names'])
-best_features
-# %%
-#accuracy using testing data
-from sklearn.metrics import accuracy_score
-dt=DecisionTreeClassifier().fit(X_train[best_features],y_train)
-y_predict = dt.predict(X_test[best_features])
-print(accuracy_score(y_test,y_predict))
-#%%
-# # Modeling
+def fit_model(model, model_wraper, X_train, y_train, X_test, y_test, n_features):
+    """Computes the accuracy of a model, giving its wrapper model and the number of features"""
+    #Wraper output as a table
+    subsets_wraper = pd.DataFrame(model_wraper.subsets_).transpose()
+    #the feature names with n_features features...
+    best_features = list(subsets_wraper.iloc[n_features-1]['feature_names'])
+    print(f' the best features for {model} are {best_features}')
+    #accuracy using testing data
+    from sklearn.metrics import accuracy_score
+    dt=model.fit(X_train[best_features],y_train)
+    y_predict = dt.predict(X_test[best_features])
+    acc = np.round(accuracy_score(y_test,y_predict),4)
+    acc_train = np.round(subsets_wraper.iloc[n_features-1]['avg_score'], 4)
+    print(f'The testing accuracy with {n_features} features with the model {model} is {acc}')
 
+    #plot confussion matrix
+    from scikitplot.metrics import plot_confusion_matrix
+    plot_confusion_matrix(y_true=y_test, y_pred=y_predict, normalize=True, title=f'Confusion Matrix for {model}')
+    plt.show()
+    return (acc, acc_train, dt, n_features, (best_features))
+#%%
+# # Decision Tree
+from sklearn.tree import DecisionTreeClassifier
+dt_fs=feature_selection(DecisionTreeClassifier(),X_train, y_train)#10 were in my example
+#%%
+dt_model = fit_model(DecisionTreeClassifier(), dt_fs,X_train, y_train, X_test, y_test, 10)
+#%%
 # Logistic Regression
 from sklearn.linear_model import LogisticRegression
-log_regr = LogisticRegression().fit(X_train[best_features], y_train)
-
+lr_fs=feature_selection(LogisticRegression(), X_train, y_train)#36
+#%%
+lr_model = fit_model(LogisticRegression(), lr_fs, X_train, y_train, X_test, y_test, 36)
+#%%
 # Linear Determinant Analysis
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
-lda = LDA().fit(X_train[best_features], y_train)
-
-# Regression Tree
-from sklearn.tree import DecisionTreeClassifier
-regr_tree = DecisionTreeClassifier().fit(X_train[best_features],y_train)
-
+lda_fs=feature_selection(LDA(), X_train,y_train)
+#%%
+lda_model=fit_model(LDA(),lda_fs, X_train, y_train, X_test, y_test, 10)
+#%%
 # Random Forest
 from sklearn.ensemble import RandomForestClassifier
-random_forest = RandomForestClassifier(max_depth=2, random_state=0).fit(X_train[best_features], y_train)
-
+rf_fs = feature_selection(RandomForestClassifier(), X_train, y_train.values.ravel())
+#%%
+rfc_model = fit_model(RandomForestClassifier(), rf_fs, X_train, y_train.values.ravel(), X_test, y_test.values.ravel(), 6)
+#%%
 # KNN
 from sklearn.neighbors import KNeighborsClassifier
+knn_fs = feature_selection(KNeighborsClassifier(), X_train, y_train)#22
 
-kVals = range(1,5)
-accuracies = []
-for k in kVals:
-    #training the KNN model with each value of k
-    KNN_testing = KNeighborsClassifier(n_neighbors = k)
-    KNN_testing.fit(X_train[best_features], y_train)
-    #evaluating the model and updating the list of accuracies
-    score = KNN_testing.score(X_test[best_features], y_test)
-    #print("k = %d, accuracy= %.2f%%" % (k, score * 100))
-    accuracies.append(score)
-# obtaining the value of k with the highest accuracy
-i = np.argmax(accuracies)
-KNN = KNeighborsClassifier(n_neighbors = kVals[i]).fit(X_train[best_features], y_train)
-
-print("k = %d achieved the highest accuracy of %.2f%%"%(kVals[i], accuracies[i]*100))
-
-# # Model Evaluation
-
-import scikitplot as skplt
-from sklearn.model_selection import cross_val_predict
-from sklearn import metrics
 #%%
-def evaluation(model):
-    predictions=cross_val_predict(model, X_test[best_features], y_test.values.ravel())
-    skplt.metrics.plot_confusion_matrix(y_true=y_test, y_pred=predictions, normalize=True, title=f'Confusion Matrix for {model}')
-    plt.show()
-    print("Acuracy on test data: %.3f%%" % (metrics.accuracy_score(y_test, predictions) * 100.0))
-    
-evaluation(KNN)
-labelnames=df['label'].unique()
-print(f'0: {labelnames[0]}, 1: {labelnames[1]}, 2: {labelnames[2]}, 3: {labelnames[3]}, ')
-evaluation(log_regr)
+knn_model = fit_model(KNeighborsClassifier(),knn_fs, X_train, y_train, X_test, y_test, 22)
 
-evaluation(lda)
-
-evaluation(regr_tree)
-
-evaluation(random_forest)
-
-
-# %%
+#%%
+#wrap up the results
+pd.DataFrame((dt_model, lr_model, lda_model, rfc_model, knn_model), columns=('Test Accuracy', 'Train Accuracy', 'Model', 'Number of Features', 'Features')).sort_values('Test Accuracy', ascending=False)
+#%%
+#......... we choose the best model and do hyperparameter tuning.
