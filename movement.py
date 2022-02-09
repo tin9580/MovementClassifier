@@ -16,7 +16,7 @@ def append_files(files):
     """Function to append multiple files. It returns the files with a column indicating each batch."""
     df_out=pd.DataFrame()
     for i,file in enumerate(files):
-        print(file)
+        #print(file)
         df = pd.read_csv(file,header=0, skiprows=range(1, 100), skipfooter=100)##first and last rows, usually noise
         df=df.dropna(axis=1)
         df['batch']=i
