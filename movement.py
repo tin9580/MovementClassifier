@@ -175,32 +175,32 @@ def fit_model(model, model_wraper, X_train, y_train, X_test, y_test, n_features)
 from sklearn.tree import DecisionTreeClassifier
 dt_fs=feature_selection(DecisionTreeClassifier(),X_train, y_train)#10 were in my example
 #%%
-dt_model = fit_model(DecisionTreeClassifier(), dt_fs,X_train, y_train, X_test, y_test, 10)
+dt_model = fit_model(DecisionTreeClassifier(), dt_fs,X_train, y_train, X_test, y_test, 8)
 #%%
 # Logistic Regression
 from sklearn.linear_model import LogisticRegression
 lr_fs=feature_selection(LogisticRegression(), X_train, y_train)#36
 #%%
-lr_model = fit_model(LogisticRegression(), lr_fs, X_train, y_train, X_test, y_test, 36)
+lr_model = fit_model(LogisticRegression(), lr_fs, X_train, y_train, X_test, y_test, 16)
 #%%
 # Linear Determinant Analysis
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
 lda_fs=feature_selection(LDA(), X_train,y_train)
 #%%
-lda_model=fit_model(LDA(),lda_fs, X_train, y_train, X_test, y_test, 10)
+lda_model=fit_model(LDA(),lda_fs, X_train, y_train, X_test, y_test, 19)
 #%%
 # Random Forest
 from sklearn.ensemble import RandomForestClassifier
 rf_fs = feature_selection(RandomForestClassifier(), X_train, y_train.values.ravel())
 #%%
-rfc_model = fit_model(RandomForestClassifier(), rf_fs, X_train, y_train.values.ravel(), X_test, y_test.values.ravel(), 6)
+rfc_model = fit_model(RandomForestClassifier(), rf_fs, X_train, y_train.values.ravel(), X_test, y_test.values.ravel(), 12)
 #%%
 # KNN
 from sklearn.neighbors import KNeighborsClassifier
 knn_fs = feature_selection(KNeighborsClassifier(), X_train, y_train)#22
 
 #%%
-knn_model = fit_model(KNeighborsClassifier(),knn_fs, X_train, y_train, X_test, y_test, 22)
+knn_model = fit_model(KNeighborsClassifier(),knn_fs, X_train, y_train, X_test, y_test, 7)
 
 #%%
 #wrap up the results
