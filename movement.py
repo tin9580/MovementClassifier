@@ -29,8 +29,34 @@ df_samba = append_files(samba_files)
 df_walk = append_files(walk_files)
 df_downstairs = append_files(downstairs_files)
 
+#%%
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+#%%
+fig, axes = plt.subplots(2, 4, figsize=(20,10), sharey=True)
+
+sns.lineplot(data = df_salsa[df_salsa['batch']==1]['ax'], ax=axes[0,0])
+axes[0,0].title.set_text('Salsa')
+sns.lineplot(data = df_samba[df_samba['batch']==1]['ax'], ax=axes[0,1])
+axes[0,1].title.set_text('Samba')
+sns.lineplot(data = df_walk[df_walk['batch']==1]['ax'], ax=axes[0,2])
+axes[0,2].title.set_text('Walking')
+sns.lineplot(data = df_downstairs[df_downstairs['batch']==1]['ax'], ax=axes[0,3])
+axes[0,3].title.set_text('Downstairs')
 
 
+sns.lineplot(data = df_salsa[df_salsa['batch']==11]['ax'], ax=axes[1,0])
+axes[1,0].title.set_text('Salsa')
+sns.lineplot(data = df_samba[df_samba['batch']==1]['ax'], ax=axes[1,1])
+axes[1,1].title.set_text('Samba')
+sns.lineplot(data = df_walk[df_walk['batch']==11]['ax'], ax=axes[1,2])
+axes[1,2].title.set_text('Walking')
+sns.lineplot(data = df_downstairs[df_downstairs['batch']==11]['ax'], ax=axes[1,3])
+axes[1,3].title.set_text('Downstairs')
+
+
+plt.show()
 #%%
 def mean_number_of_peaks(x):
     """return the mean number of peaks of a signal"""
@@ -79,9 +105,7 @@ df
 print("The dataset has {} observations and {} variables with {} missing values".format(df.shape[0], df.shape[1], df.isna().sum().sum()) )
 if df.isna().sum().sum() !=0 :
     raise ValueError('The dataframe has missing values')
-#%%
-import seaborn as sns
-import matplotlib.pyplot as plt
+
 #%%
 fig, axes = plt.subplots(3, 3, figsize=(20,10))
 
