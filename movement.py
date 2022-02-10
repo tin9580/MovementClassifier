@@ -231,3 +231,41 @@ knn_model = fit_model(KNeighborsClassifier(),knn_fs, X_train, y_train, X_test, y
 pd.DataFrame((dt_model, lr_model, lda_model, rfc_model, knn_model), columns=('Test Accuracy', 'Train Accuracy', 'Model', 'Number of Features', 'Features')).sort_values('Test Accuracy', ascending=False)
 #%%
 #......... we choose the best model and do hyperparameter tuning.
+
+# sampling part of the data to see the results 
+subset = df_encoded.sample(n=100)
+
+x_sample=subset.drop('label',axis=1)
+y_sample=subset[['label']]
+
+X_train_sample, X_test_sample, y_train_sample, y_test_sample = train_test_split(x_sample, y_sample, test_size=0.33, random_state=42)
+
+def feature_selection_simplified(model, X_train, y_train, cv=2):
+    """Just select the features"""
+    my_sfs=sfs(model,forward=True,verbose=0,cv=cv,n_jobs=-1,scoring='accuracy',k_features= len(X_train.columns))
+    my_sfs.fit(X_train,y_train)
+    return my_sfs
+
+# testing with the sample
+# Decision Tree
+dt_fs_sample=feature_selection_simplified(DecisionTreeClassifier(),X_train_sample, y_train_sample)#10 were in my example
+dt_model_sample = fit_model(DecisionTreeClassifier(), dt_fs_sample,X_train_sample, y_train_sample, X_test_sample, y_test_sample, 10)
+
+# Logistic Regression
+lr_fs_sample=feature_selection_simplified(LogisticRegression(), X_train_sample, y_train_sample)#36
+lr_model_sample = fit_model(LogisticRegression(), lr_fs_sample, X_train_sample, y_train_sample, X_test_sample, y_test_sample, 36)
+
+# Linear Determinant Analysis
+lda_fs_sample=feature_selection_simplified(LDA(), X_train_sample, y_train_sample)
+lda_model_sample=fit_model(LDA(),lda_fs_sample, X_train_sample, y_train_sample, X_test_sample, y_test_sample, 10)
+
+# Random Forest
+rf_fs_sample = feature_selection_simplified(RandomForestClassifier(), X_train_sample, y_train_sample.values.ravel())
+rfc_model_sample = fit_model(RandomForestClassifier(), rf_fs_sample, X_train_sample, y_train_sample.values.ravel(), X_test_sample, y_test_sample.values.ravel(), 6)
+
+# KNN
+knn_fs_sample = feature_selection_simplified(KNeighborsClassifier(), X_train_sample, y_train_sample)#22
+knn_model_sample = fit_model(KNeighborsClassifier(),knn_fs_sample, X_train_sample, y_train_sample, X_test_sample, y_test_sample, 22)
+
+#wrap up the results
+pd.DataFrame((dt_model_sample, lr_model_sample, lda_model_sample, rfc_model_sample, knn_model_sample), columns=('Test Accuracy', 'Train Accuracy', 'Model', 'Number of Features', 'Features')).sort_values('Test Accuracy', ascending=False)
