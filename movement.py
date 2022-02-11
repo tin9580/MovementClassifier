@@ -280,3 +280,33 @@ df_compare = pd.DataFrame({'Model': df_1['Model'],
 df_compare.plot(x="Model", y=['200_records_train', '100_records_train'], kind="bar")
 
 df_compare.plot(x="Model", y=['200_records_test', '100_records_test'], kind="bar")
+
+
+
+## Comparing samples using RandomForest Classifier
+
+# Running the model with specified parameters
+rf_fs = feature_selection(RandomForestClassifier(n_estimators= 200, min_samples_split= 2, min_samples_leaf= 1, 
+                     max_features= 'sqrt', max_depth= 10, bootstrap= False), X_train, y_train.values.ravel())
+#%%
+rfc_model = fit_model(RandomForestClassifier(n_estimators= 200, min_samples_split= 2, min_samples_leaf= 1, 
+                     max_features= 'sqrt', max_depth= 10, bootstrap= False), rf_fs, X_train, y_train.values.ravel(), X_test, y_test.values.ravel(), 6)
+#%%
+#wrap up the results
+df_rfc = pd.DataFrame(([rfc_model]), columns=('Test Accuracy', 'Train Accuracy','Model', 'Number of Features', 'Features')).sort_values('Test Accuracy', ascending=False)
+#%%
+
+# running the sample (100 records)
+rf_fs_sample = feature_selection(RandomForestClassifier(n_estimators= 200, min_samples_split= 2, min_samples_leaf= 1, 
+                     max_features= 'sqrt', max_depth= 10, bootstrap= False), X_train_sample, y_train_sample.values.ravel())
+#%%
+rfc_model_sample = fit_model(RandomForestClassifier(n_estimators= 200, min_samples_split= 2, min_samples_leaf= 1, 
+                     max_features= 'sqrt', max_depth= 10, bootstrap= False), rf_fs, X_train_sample, y_train_sample.values.ravel(), X_test_sample, y_test_sample.values.ravel(), 6)
+
+# dataset to compare
+df_rfc_compare = pd.DataFrame({'number of records': [200,100],
+                        'Train': [float(df_rfc["Train Accuracy"]),float(df_rfc_sample["Train Accuracy"])], 
+                        'Test': [float(df_rfc["Test Accuracy"]),float(df_rfc_sample["Test Accuracy"])]})
+
+# plotting
+df_rfc_compare.plot(x="number of records", y=['Train', 'Test'], kind="bar")
