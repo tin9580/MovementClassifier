@@ -260,4 +260,15 @@ knn_fs_sample = feature_selection_simplified(KNeighborsClassifier(), X_train_sam
 knn_model_sample = fit_model(KNeighborsClassifier(),knn_fs_sample, X_train_sample, y_train_sample, X_test_sample, y_test_sample, 22)
 
 #wrap up the results
-pd.DataFrame((dt_model_sample, lr_model_sample, lda_model_sample, rfc_model_sample, knn_model_sample), columns=('Test Accuracy', 'Train Accuracy', 'Model', 'Number of Features', 'Features')).sort_values('Test Accuracy', ascending=False)
+df_2 = pd.DataFrame((dt_model_sample, lr_model_sample, lda_model_sample, rfc_model_sample, knn_model_sample), columns=('Test Accuracy', 'Train Accuracy', 'Model', 'Number of Features', 'Features')).sort_values('Test Accuracy', ascending=False)
+
+# Comparing the results
+df_compare = pd.DataFrame({'Model': df_1['Model'],
+                        '200_records_train': df_1["Train Accuracy"], 
+                        '200_records_test': df_1["Test Accuracy"],
+                        '100_records_train': df_2["Train Accuracy"],
+                        '100_records_test': df_2["Test Accuracy"]})
+# Plotting
+df_compare.plot(x="Model", y=['200_records_train', '100_records_train'], kind="bar")
+
+df_compare.plot(x="Model", y=['200_records_test', '100_records_test'], kind="bar")
