@@ -181,10 +181,6 @@ def fit_model(model_wraper, n_features):
     best_features = list(subsets_wraper.iloc[n_features-1]['feature_names'])
     acc = round(subsets_wraper.iloc[n_features-1]['avg_score'],4)
 
-    #plot confussion matrix
-    #from scikitplot.metrics import plot_confusion_matrix
-    #plot_confusion_matrix(y_true=y_test, y_pred=y_predict, normalize=True, title=f'Confusion Matrix for {model}')
-    #plt.show()
     return (acc, model, n_features, (best_features))
 #%%
 # # Decision Tree
@@ -223,7 +219,6 @@ knn_model = fit_model(knn_fs, 6)
 pd.DataFrame((dt_model, lr_model, lda_model, rfc_model, knn_model), columns=('Accuracy', 'Model', 'Number of Features', 'Features')).sort_values('Accuracy', ascending=False)
 #%%
 #......... The best model if random forest........
-from sklearn.model_selection import train_test_split
 from sklearn.model_selection import RandomizedSearchCV
 import numpy as np
 
@@ -256,7 +251,22 @@ print(rf_cv.best_params_)#{'n_estimators': 200, 'min_samples_split': 2, 'min_sam
 print(rf_cv.best_score_)#0.8684.. worst than above because we have too little data
 
 #%%
+#train test split
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+X_train, X_test, y_train, y_test = train_test_split(x[rfc_model[3]], y.values.ravel(), test_size=0.33, random_state=42)
 
+rf = RandomForestClassifier(n_estimators= 200, min_samples_split= 2, min_samples_leaf= 1, max_features= 'sqrt', max_depth= 10, bootstrap= False)
+rf.fit(X_train, y_train)
+print(f'Train Accuracy: {round(rf.score(X_train, y_train),4)}, Test Accuracy: {round(rf.score(X_test, y_test),4)}')
+#%%
+#confussion matrix
+from scikitplot.metrics import plot_confusion_matrix
+plot_confusion_matrix(y_true=y_test, y_pred=rf.predict(X_test), normalize=True, title=f'Confusion Matrix for {rf}')
+plt.show()
+
+print()
+#%%
 # sampling part of the data to see the results 
 subset = df_encoded.sample(n=100)
 
