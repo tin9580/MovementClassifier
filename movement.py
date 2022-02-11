@@ -222,7 +222,40 @@ knn_model = fit_model(knn_fs, 6)
 #wrap up the results
 pd.DataFrame((dt_model, lr_model, lda_model, rfc_model, knn_model), columns=('Accuracy', 'Model', 'Number of Features', 'Features')).sort_values('Accuracy', ascending=False)
 #%%
-#......... we choose the best model and do hyperparameter tuning.
+#......... The best model if random forest........
+from sklearn.model_selection import train_test_split
+from sklearn.model_selection import RandomizedSearchCV
+import numpy as np
+
+#hyperparameter tuning
+#https://towardsdatascience.com/hyperparameter-tuning-the-random-forest-in-python-using-scikit-learn-28d2aa77dd74
+# Number of trees in random forest
+n_estimators = [int(x) for x in np.linspace(start = 200, stop = 2000, num = 10)]
+# Number of features to consider at every split
+max_features = ['auto', 'sqrt']
+# Maximum number of levels in tree
+max_depth = [int(x) for x in np.linspace(10, 110, num = 11)]
+max_depth.append(None)
+# Minimum number of samples required to split a node
+min_samples_split = [2, 5, 10]
+# Minimum number of samples required at each leaf node
+min_samples_leaf = [1, 2, 4]
+# Method of selecting samples for training each tree
+bootstrap = [True, False]# Create the random grid
+random_grid = {'n_estimators': n_estimators,
+               'max_features': max_features,
+               'max_depth': max_depth,
+               'min_samples_split': min_samples_split,
+               'min_samples_leaf': min_samples_leaf,
+               'bootstrap': bootstrap}
+
+rf_cv = RandomizedSearchCV(RandomForestClassifier(), random_grid, cv=4)
+rf_cv.fit(x[rfc_model[3]],y.values.ravel())
+#%%
+print(rf_cv.best_params_)#{'n_estimators': 200, 'min_samples_split': 2, 'min_samples_leaf': 1, 'max_features': 'sqrt', 'max_depth': 10, 'bootstrap': False}
+print(rf_cv.best_score_)#0.8684.. worst than above because we have too little data
+
+#%%
 
 # sampling part of the data to see the results 
 subset = df_encoded.sample(n=100)
