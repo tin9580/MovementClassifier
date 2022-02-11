@@ -147,20 +147,16 @@ ax = plt.subplots(figsize=(15, 7))
 sns.heatmap(corr,  annot=True, annot_kws={"size": 15}) 
 
 # %%
-#seting training and testing sets
+#seting
 x=df_encoded.drop('label',axis=1)
 y=df_encoded[['label']]
 
-from sklearn.model_selection import train_test_split
-
-X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.33, random_state=42)
-
 #%%
 from mlxtend.feature_selection import SequentialFeatureSelector as sfs
-def feature_selection(model, X_train, y_train, cv=2):
+def feature_selection(model, x, y, cv=4):
     """Plots the accuracy vs the number of features selected for a given model"""
-    my_sfs=sfs(model,forward=True,verbose=0,cv=cv,n_jobs=-1,scoring='accuracy',k_features= len(X_train.columns))
-    my_sfs.fit(X_train,y_train)
+    my_sfs=sfs(model,forward=True,verbose=0,cv=cv,n_jobs=-1,scoring='accuracy',k_features= len(x.columns))
+    my_sfs.fit(x,y)
 
     #plot the scores
     from mlxtend.plotting import plot_sequential_feature_selection as plot_sfs
@@ -174,61 +170,57 @@ def feature_selection(model, X_train, y_train, cv=2):
 
     return my_sfs
 #%%
-def fit_model(model, model_wraper, X_train, y_train, X_test, y_test, n_features):
+def fit_model(model_wraper, n_features):
     """Computes the accuracy of a model, giving its wrapper model and the number of features"""
     #Wraper output as a table
     subsets_wraper = pd.DataFrame(model_wraper.subsets_).transpose()
+    
+    model=model_wraper.estimator
+    
     #the feature names with n_features features...
     best_features = list(subsets_wraper.iloc[n_features-1]['feature_names'])
-    print(f' the best features for {model} are {best_features}')
-    #accuracy using testing data
-    from sklearn.metrics import accuracy_score
-    dt=model.fit(X_train[best_features],y_train)
-    y_predict = dt.predict(X_test[best_features])
-    acc = np.round(accuracy_score(y_test,y_predict),4)
-    acc_train = np.round(subsets_wraper.iloc[n_features-1]['avg_score'], 4)
-    print(f'The testing accuracy with {n_features} features with the model {model} is {acc}')
+    acc = round(subsets_wraper.iloc[n_features-1]['avg_score'],4)
 
     #plot confussion matrix
-    from scikitplot.metrics import plot_confusion_matrix
-    plot_confusion_matrix(y_true=y_test, y_pred=y_predict, normalize=True, title=f'Confusion Matrix for {model}')
-    plt.show()
-    return (acc, acc_train, dt, n_features, (best_features))
+    #from scikitplot.metrics import plot_confusion_matrix
+    #plot_confusion_matrix(y_true=y_test, y_pred=y_predict, normalize=True, title=f'Confusion Matrix for {model}')
+    #plt.show()
+    return (acc, model, n_features, (best_features))
 #%%
 # # Decision Tree
 from sklearn.tree import DecisionTreeClassifier
-dt_fs=feature_selection(DecisionTreeClassifier(),X_train, y_train)#10 were in my example
+dt_fs=feature_selection(DecisionTreeClassifier(),x, y,5)#10 were in my example
 #%%
-dt_model = fit_model(DecisionTreeClassifier(), dt_fs,X_train, y_train, X_test, y_test, 8)
+dt_model = fit_model(dt_fs, 8)
 #%%
 # Logistic Regression
 from sklearn.linear_model import LogisticRegression
-lr_fs=feature_selection(LogisticRegression(), X_train, y_train)#36
+lr_fs=feature_selection(LogisticRegression(), x, y)#36
 #%%
-lr_model = fit_model(LogisticRegression(), lr_fs, X_train, y_train, X_test, y_test, 16)
+lr_model = fit_model(lr_fs,13)
 #%%
 # Linear Determinant Analysis
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
-lda_fs=feature_selection(LDA(), X_train,y_train)
+lda_fs=feature_selection(LDA(), x,y, 4)
 #%%
-lda_model=fit_model(LDA(),lda_fs, X_train, y_train, X_test, y_test, 19)
+lda_model=fit_model(lda_fs, 22)
 #%%
 # Random Forest
 from sklearn.ensemble import RandomForestClassifier
-rf_fs = feature_selection(RandomForestClassifier(), X_train, y_train.values.ravel())
+rf_fs = feature_selection(RandomForestClassifier(), x, y.values.ravel(),2)
 #%%
-rfc_model = fit_model(RandomForestClassifier(), rf_fs, X_train, y_train.values.ravel(), X_test, y_test.values.ravel(), 12)
+rfc_model = fit_model(rf_fs, 7)
 #%%
 # KNN
 from sklearn.neighbors import KNeighborsClassifier
-knn_fs = feature_selection(KNeighborsClassifier(), X_train, y_train)#22
+knn_fs = feature_selection(KNeighborsClassifier(), x, y,5)#22
 
 #%%
-knn_model = fit_model(KNeighborsClassifier(),knn_fs, X_train, y_train, X_test, y_test, 7)
+knn_model = fit_model(knn_fs, 6)
 
 #%%
 #wrap up the results
-pd.DataFrame((dt_model, lr_model, lda_model, rfc_model, knn_model), columns=('Test Accuracy', 'Train Accuracy', 'Model', 'Number of Features', 'Features')).sort_values('Test Accuracy', ascending=False)
+pd.DataFrame((dt_model, lr_model, lda_model, rfc_model, knn_model), columns=('Accuracy', 'Model', 'Number of Features', 'Features')).sort_values('Accuracy', ascending=False)
 #%%
 #......... we choose the best model and do hyperparameter tuning.
 
